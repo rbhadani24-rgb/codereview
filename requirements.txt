@@ -1,1 +1,3 @@
-<content from requirement.txt>
+fastapi
+uvicorn
+openai
