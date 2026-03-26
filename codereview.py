@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 #os.environ["OPENAI_API_KEY"] = "OPENAI_API_KEY"
 
 client = OpenAI()
-
+print("KEY LOADED:", os.getenv("OPENAI_API_KEY"))
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
