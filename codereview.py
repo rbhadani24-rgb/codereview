@@ -1,16 +1,22 @@
 import os
 from fastapi import FastAPI
 from openai import OpenAI
-
+from fastapi.middleware.cors import CORSMiddleware
 # -----------------------------
 # 🔑 API KEY
 # -----------------------------
-os.environ["OPENAI_API_KEY"] = "k-proj-sLvZnFkHJw1yM6nP7q8_YNodyQD3UTR5cIpYJ1B8CP4O-QpTyAdhshuqtNfrco-LC3MO4Mw-Z-T3BlbkFJnSdzSGsGhwALCsTrzU4RO1GBpGWpeccUAqHNheuo9iZQAYPm99zV-yAR107YoNJyLnC1YnacEA"
+#os.environ["OPENAI_API_KEY"] = "OPENAI_API_KEY"
 
-client = OpenAI(api_key="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")
+client = OpenAI()
 
 app = FastAPI()
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # -----------------------------
 # 🧠 PROMPT BUILDER (UPDATED)
 # -----------------------------
@@ -19,7 +25,6 @@ def build_prompt(architecture, language, guidelines, code):
 You are a senior software architect.
 
 Review the code based on the following architecture requirements.
-
 Architecture:
 {architecture}
 
@@ -36,7 +41,8 @@ Tasks:
 4. Identify security risks
 5. Suggest improvements
 
-Return JSON:
+Return ONLY valid JSON. 
+Do not add explanation, text, or markdown.
 {{
   "architecture_issues": [],
   "bugs": [],
@@ -63,21 +69,36 @@ def review_code(architecture, language, guidelines, code):
 
     return response.choices[0].message.content
 
+
 # -----------------------------
 # 🌐 API
 # -----------------------------
+import json
+import re
+
 @app.post("/review")
 def review(input: dict):
-    architecture = input.get("architecture", "")
-    language = input.get("language", "")
-    guidelines = input.get("guidelines", "")
-    code = input.get("code", "")
+    result = review_code(
+        input.get("architecture", ""),
+        input.get("language", ""),
+        input.get("guidelines", ""),
+        input.get("code", "")
+    )
 
-    if not code:
-        return {"error": "Code is required"}
+    print("AI RAW OUTPUT:", result)
 
-    result = review_code(architecture, language, guidelines, code)
+    try:
+        # Remove markdown if present
+        cleaned = re.sub(r"```json|```", "", result).strip()
 
-    return {
-        "review": result
-    }
+        return json.loads(cleaned)
+
+    except Exception as e:
+        return {
+            "error": "Invalid AI response",
+            "raw_output": result
+        }
+    
+from fastapi.staticfiles import StaticFiles
+# Serve frontend
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
